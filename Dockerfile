@@ -1,7 +1,7 @@
 # Utilise Python
 FROM python:3.9-slim
 
-# On ajoute 'git' à la liste des installations
+# On installe les bibliothèques système ET git
 RUN apt-get update && apt-get install -y \
     libgl1 \
     libglib2.0-0 \
@@ -10,7 +10,7 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
-# Copie et installe les outils
+# Copie et installe les outils de requirements.txt
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
