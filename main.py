@@ -1,64 +1,50 @@
 from fastapi import FastAPI, File, UploadFile
 from ultralytics import YOLO
-import io, json, torch, functools, firebase_admin
+from supabase import create_client, Client
+import io, torch, functools
 from PIL import Image
-from firebase_admin import credentials, firestore
-from datetime import datetime
 import numpy as np
 
-# 1. FIX TECHNIQUE POUR LE CHARGEMENT YOLO
+# Fix technique pour charger le modèle YOLO sur Koyeb
 torch.load = functools.partial(torch.load, weights_only=False)
 
-# 2. TA CLÉ NETTOYÉE
-service_account_info = {
-  "type": "service_account",
-  "project_id": "can-2025-dashboard",
-  "private_key_id": "d4ec71ca2d1398dabc9fef6cc50d5dc806f9b39c",
-  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvwIBADANBgkqhkiG9w0BAQEFAASCBKkwggSlAgEAAoIBAQC0wsOG7YI2hgBR\n6t7SzLyZ418Gd4N22KOWqPdMBbWgTbnzZ0UXaOc324Hr67pgfvkBIQcbGP6oG8f7\nTZBefEobtVRimUvG11qy9syssF1F+e9SmxXSSuEms5NWN41vWTyQAfgeilWwLY1o\nAhk2qa6iNlsBj6wco5EIJNLANEvD1aLTdlMjkTyj3iso6vrkKIBZ7GAf3bHrKXOD\no1m1d/qGmxIQSu/em5koT/wwuRVOZkMvnSnX+H/wLS8evOLmMAcig0yWB6G2Rbfe\njXyznFu0c4BnQK322+zNVhiJSBD7A6H/HyPNEhy3UM3NrxQQ7kNcnVFSFpp9DyxY\nlX97pjPBAgMBAAECggEACPUh2rIzDV/57L/2h3xigum+kBkkvaNMsARIL6SUyeXa\n0idgSCGzBj9CzUh4NZyf2vYiXlhlvjo/ixeJO6AYeA5gqSYu7Xfx5Fkl7roqqnNm\nmwcDv3u7HpTa4fSMy2N2WdiPIsxOJMCNIltVmTIywj0ZU2wlkPcWEnuTVLetYtNC\nIgrxBq8/QeWbfcr7idU5DSZ0b49JmVHEwSX5rBwTDbXLXkGFJ+dUGS+fAc0AB0Nn\ni6zv8ZCzT5TaQ463FS4s+ZPSxwhBJndRQ1/7pXPexwFaMkSnEApu/eXJ1hg1j4Ke\n5uMsL3TBGilMhhlvvOlyFIcjyqZea0zB2kXlPd8o8QKBgQD9M32R2oZFNguVY0Bb\nl470qRkXGG81CCqd6tz4Ry4dRp0VlVAHXFDbvRC8SSBmkrcfOtoymXtKv5qfSJTS\buTgFhUMSzdngxSnjwUQuGOt+j/p4WGGtN3CHFKnEYD/wuC215F5w0NkgKXOBqGH\nWRcFPbgcV35Au3NkYMGA9UCFRQKBgQC2wkgFqCNGlcWMVYM1onW92NrwD09JXZfb\nEY6w7t+YHEUOAIUVbrsyq9PY7MWnK98pEs8Hpx54CcBESgF+ipXkuRM7XSaomrtf\nL+DIrCUIacM+yx5zYAn2OEu/W2WPhTa5UqOScjQ0B3+eAIveJN5j4V4Zv31IGWFb\n8rKwbUyGTQKBgQCl7cxofNBpItXMfFJ8s4GXjAlJPVYDZuqmunc8rUjnHpNqxYLA\nkBrdJbWF7lYxYgxnhuXfKv3FKnNl1ubQUKPkxhPdDp2sVBaBCBTFtFB+fvTLjEuh\nP33j6zOvEKV89nTU3cgUB4ZuonAF6AqK7DNN1/iDekLeoPkp2s50eERkEQKBgQCm\ndk09gcknqJF34geR2bjew9+fGoLAM1R2wAY1GE5mcRFg0I5nWCV/4Mwj4H2jZ61q\n7uvNb6Wr9k2+pZ240af33a8rugvVNKKH78cRYOKWSCcDUeUZd5d7QgmUcT4PPGn8\n4M2GPSlZXp8ZnivHmdNKLGMWlrkY660nH+csFVHHXQKBgQCdfSee2Dztgl54w02r\nAfQPPsO1XqNcD46Gl8Ng5fnL2nb90Rmqm7J6TVfVBQk1sj5ypWYg83FCorfzUFN0\nYUjbRK4orSLEuzLWmTDibGvl5CbwoyHTkWg0i3YtMDddUPODkUgL3d9C4HneDo4c\nbwrrXBb1S0wFGbJh7aPwaHWHow==\n-----END PRIVATE KEY-----\n",
-  "client_email": "firebase-adminsdk-fbsvc@can-2025-dashboard.iam.gserviceaccount.com",
-  "client_id": "110330015843040008241",
-  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-  "token_uri": "https://oauth2.googleapis.com/token",
-  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-fbsvc%40can-2025-dashboard.iam.gserviceaccount.com",
-  "universe_domain": "googleapis.com"
-}
+# --- CONFIGURATION SUPABASE ---
+# Trouve ces infos dans Supabase -> Settings -> API
+SUPABASE_URL = "https://qpwwceigajtigvhpmbpg.supabase.co"
+SUPABASE_KEY = "sb_publishable_hYAcKlZbCfCdW-SzdiEIDA_Ng7jGwO7"
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# 3. INITIALISATION AVEC NETTOYAGE AUTOMATIQUE DES CARACTÈRES INVISIBLES
-if not firebase_admin._apps:
-    # On remplace les doubles backslashs et on s'assure que la clé est propre
-    clean_key = service_account_info["private_key"].replace("\\n", "\n").strip()
-    service_account_info["private_key"] = clean_key
-    
-    cred = credentials.Certificate(service_account_info)
-    firebase_admin.initialize_app(cred)
-
-db = firestore.client()
 app = FastAPI()
 model = YOLO('yolov8n.pt') 
 
 @app.get("/")
-def read_root():
-    return {"status": "IA Ready", "firebase": "Connected"}
+def home():
+    return {"status": "IA active", "database": "Supabase"}
 
 @app.post("/predict")
 async def predict(stade_name: str, file: UploadFile = File(...)):
     img_bytes = await file.read()
     image = Image.open(io.BytesIO(img_bytes)).convert("RGB")
     
-    # Paramètres optimisés pour tes 75 supporters
+    # Détection des supporters (Ton modèle voit 75 personnes !)
     results = model(np.array(image), imgsz=1280, conf=0.05)
+    count = sum(len(r.boxes) for r in results)
     
-    count = 0
-    for result in results:
-        count += len(result.boxes)
-    
-    data = {"stade": stade_name, "nombre_supporters": count, "timestamp": datetime.now()}
+    # Envoi direct des données à Supabase
+    data = {
+        "stade": stade_name, 
+        "nombre_supporters": count
+        # La colonne 'timestamp' se remplira toute seule avec now()
+    }
     
     try:
-        db.collection("affluence").add(data)
-        msg = "✅ Enregistré !"
+        supabase.table("affluence").insert(data).execute()
+        db_status = " Succès Supabase"
     except Exception as e:
-        msg = f"❌ Erreur DB : {str(e)}"
+        db_status = f" Erreur : {str(e)}"
                 
-    return {"stade": stade_name, "nombre_supporters": count, "message": msg}
+    return {
+        "stade": stade_name, 
+        "nombre_supporters": count, 
+        "database": db_status
+    }
