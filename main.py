@@ -3,6 +3,7 @@ from ultralytics import YOLO
 import io
 from PIL import Image
 import numpy as np
+import torch
 
 app = FastAPI()
 
