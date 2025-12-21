@@ -6,10 +6,10 @@ from firebase_admin import credentials, firestore
 from datetime import datetime
 import numpy as np
 
-# 1. FIX TECHNIQUE POUR LE CHARGEMENT DU MODÈLE
+# 1. FIX TECHNIQUE POUR LE CHARGEMENT YOLO
 torch.load = functools.partial(torch.load, weights_only=False)
 
-# 2. TA CLÉ DIRECTEMENT DANS LE CODE
+# 2. TA CLÉ NETTOYÉE
 service_account_info = {
   "type": "service_account",
   "project_id": "can-2025-dashboard",
@@ -24,10 +24,12 @@ service_account_info = {
   "universe_domain": "googleapis.com"
 }
 
-# 3. RÉPARATION ET INITIALISATION (Étape cruciale)
+# 3. INITIALISATION AVEC NETTOYAGE AUTOMATIQUE DES CARACTÈRES INVISIBLES
 if not firebase_admin._apps:
-    # On force la réparation des sauts de ligne pour éviter l'erreur JWT
-    service_account_info["private_key"] = service_account_info["private_key"].replace("\\n", "\n")
+    # On remplace les doubles backslashs et on s'assure que la clé est propre
+    clean_key = service_account_info["private_key"].replace("\\n", "\n").strip()
+    service_account_info["private_key"] = clean_key
+    
     cred = credentials.Certificate(service_account_info)
     firebase_admin.initialize_app(cred)
 
@@ -35,12 +37,16 @@ db = firestore.client()
 app = FastAPI()
 model = YOLO('yolov8n.pt') 
 
+@app.get("/")
+def read_root():
+    return {"status": "IA Ready", "firebase": "Connected"}
+
 @app.post("/predict")
 async def predict(stade_name: str, file: UploadFile = File(...)):
     img_bytes = await file.read()
     image = Image.open(io.BytesIO(img_bytes)).convert("RGB")
     
-    # 3. DETECTION HAUTE PERFORMANCE (75 supporters détectés !)
+    # Paramètres optimisés pour tes 75 supporters
     results = model(np.array(image), imgsz=1280, conf=0.05)
     
     count = 0
@@ -51,8 +57,8 @@ async def predict(stade_name: str, file: UploadFile = File(...)):
     
     try:
         db.collection("affluence").add(data)
-        status = "✅ Succès : Enregistré dans Firebase !"
+        msg = "✅ Enregistré !"
     except Exception as e:
-        status = f"❌ Erreur Firebase : {str(e)}"
+        msg = f"❌ Erreur DB : {str(e)}"
                 
-    return {"stade": stade_name, "nombre_supporters": count, "message": status}
+    return {"stade": stade_name, "nombre_supporters": count, "message": msg}
