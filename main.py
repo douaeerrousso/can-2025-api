@@ -7,13 +7,12 @@ import functools
 import firebase_admin
 from firebase_admin import credentials, firestore
 from datetime import datetime
+import numpy as np  # <--- MODIFICATION 1 : Ajouter cet import
 
 # 1. SOLUTION BUG PYTORCH / ULTRALYTICS
-# Cette ligne est indispensable pour charger le modèle sur Koyeb
 torch.load = functools.partial(torch.load, weights_only=False)
 
-# 2. CONFIGURATION FIREBASE (PaaS Stockage)
-# Charge la clé JSON que tu as ajoutée sur GitHub
+# 2. CONFIGURATION FIREBASE
 cred = credentials.Certificate("firebase-key.json")
 firebase_admin.initialize_app(cred)
 db = firestore.client()
@@ -21,7 +20,6 @@ db = firestore.client()
 app = FastAPI()
 
 # 3. CHARGEMENT DU MODÈLE IA
-# Le modèle Nano est idéal pour les ressources gratuites de Koyeb
 model = YOLO('yolov8n.pt') 
 
 @app.get("/")
@@ -34,32 +32,32 @@ def home():
 
 @app.post("/predict")
 async def predict(stade_name: str, file: UploadFile = File(...)):
-    """
-    Cette route reçoit une image et le nom du stade, 
-    compte les supporters et sauvegarde le résultat.
-    """
-    # Lecture de l'image envoyée
+    # Lecture de l'image
     img_bytes = await file.read()
-    image = Image.open(io.BytesIO(img_bytes))
     
-    # Inférence IA avec YOLO
-    results = model(image)
+    # MODIFICATION 2 : Convertir en RGB pour éviter les erreurs avec les images PNG/RGBA
+    image = Image.open(io.BytesIO(img_bytes)).convert("RGB")
     
-    # Comptage des personnes (la classe '0' dans YOLO est 'person')
+    # MODIFICATION 3 : Convertir l'image en tableau Numpy
+    # C'est ce qui règle définitivement l'erreur "FileNotFoundError" sur Koyeb
+    img_array = np.array(image)
+    
+    # Lancer la détection sur le tableau d'image
+    results = model(img_array)
+    
     count = 0
     for result in results:
         for box in result.boxes:
             if int(box.cls[0]) == 0: 
                 count += 1
     
-    # 4. SAUVEGARDE EN TEMPS RÉEL DANS FIREBASE
+    # 4. SAUVEGARDE DANS FIREBASE
     data = {
         "stade": stade_name,
         "nombre_supporters": count,
-        "timestamp": datetime.now() # Heure précise pour le Dashboard
+        "timestamp": datetime.now()
     }
     
-    # Enregistre dans la collection 'affluence' sur Firestore
     db.collection("affluence").add(data)
                 
     return {
