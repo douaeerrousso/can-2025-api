@@ -7,12 +7,13 @@ import functools
 import firebase_admin
 from firebase_admin import credentials, firestore
 from datetime import datetime
-import numpy as np  # <--- MODIFICATION 1 : Ajouter cet import
+import numpy as np
 
 # 1. SOLUTION BUG PYTORCH / ULTRALYTICS
 torch.load = functools.partial(torch.load, weights_only=False)
 
 # 2. CONFIGURATION FIREBASE
+# IMPORTANT : Assure-toi d'avoir uploadé une NOUVELLE clé JSON sur GitHub
 cred = credentials.Certificate("firebase-key.json")
 firebase_admin.initialize_app(cred)
 db = firestore.client()
@@ -32,18 +33,14 @@ def home():
 
 @app.post("/predict")
 async def predict(stade_name: str, file: UploadFile = File(...)):
-    # Lecture de l'image
     img_bytes = await file.read()
-    
-    # MODIFICATION 2 : Convertir en RGB pour éviter les erreurs avec les images PNG/RGBA
     image = Image.open(io.BytesIO(img_bytes)).convert("RGB")
-    
-    # MODIFICATION 3 : Convertir l'image en tableau Numpy
-    # C'est ce qui règle définitivement l'erreur "FileNotFoundError" sur Koyeb
     img_array = np.array(image)
     
-    # Lancer la détection sur le tableau d'image
-    results = model(img_array)
+    # --- OPTIMISATION POUR LA FOULE ---
+    # imgsz=1280 : permet de voir les petits détails (les supporters au loin)
+    # conf=0.15 : permet de détecter les personnes même si elles sont partiellement cachées
+    results = model(img_array, imgsz=1280, conf=0.15)
     
     count = 0
     for result in results:
@@ -58,10 +55,14 @@ async def predict(stade_name: str, file: UploadFile = File(...)):
         "timestamp": datetime.now()
     }
     
-    db.collection("affluence").add(data)
+    try:
+        db.collection("affluence").add(data)
+        message = "Données envoyées au Dashboard avec succès"
+    except Exception as e:
+        message = f"Erreur Firebase : {str(e)}"
                 
     return {
         "stade": stade_name, 
         "nombre_supporters": count, 
-        "message": "Données envoyées au Dashboard avec succès"
+        "message": message
     }
