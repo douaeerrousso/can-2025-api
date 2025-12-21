@@ -2,12 +2,14 @@ from fastapi import FastAPI, File, UploadFile
 from ultralytics import YOLO
 import io
 from PIL import Image
-import numpy as np
 import torch
+
+# CETTE LIGNE EST LA CLÉ : Elle autorise PyTorch à charger le modèle YOLO
+torch.serialization.add_safe_globals(["ultralytics.nn.tasks.DetectionModel"])
 
 app = FastAPI()
 
-# On utilise 'yolov8n.pt' car il est très léger pour le plan gratuit
+# Chargement du modèle (il se téléchargera automatiquement au premier lancement)
 model = YOLO('yolov8n.pt') 
 
 @app.get("/")
