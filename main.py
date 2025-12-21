@@ -9,7 +9,7 @@ import numpy as np
 # 1. FIX TECHNIQUE POUR LE CHARGEMENT DU MODÈLE
 torch.load = functools.partial(torch.load, weights_only=False)
 
-# 2. CONFIGURATION FIREBASE AVEC TA CLÉ
+# 2. TA CLÉ DIRECTEMENT DANS LE CODE
 service_account_info = {
   "type": "service_account",
   "project_id": "can-2025-dashboard",
@@ -24,9 +24,9 @@ service_account_info = {
   "universe_domain": "googleapis.com"
 }
 
-# 3. INITIALISATION CRITIQUE (RÉPARE LA SIGNATURE)
+# 3. RÉPARATION ET INITIALISATION (Étape cruciale)
 if not firebase_admin._apps:
-    # Cette ligne transforme les '\n' de texte en vrais sauts de ligne pour Google
+    # On force la réparation des sauts de ligne pour éviter l'erreur JWT
     service_account_info["private_key"] = service_account_info["private_key"].replace("\\n", "\n")
     cred = credentials.Certificate(service_account_info)
     firebase_admin.initialize_app(cred)
@@ -40,27 +40,19 @@ async def predict(stade_name: str, file: UploadFile = File(...)):
     img_bytes = await file.read()
     image = Image.open(io.BytesIO(img_bytes)).convert("RGB")
     
-    # DÉTECTION OPTIMISÉE (75+ supporters détectés)
+    # 3. DETECTION HAUTE PERFORMANCE (75 supporters détectés !)
     results = model(np.array(image), imgsz=1280, conf=0.05)
     
     count = 0
     for result in results:
         count += len(result.boxes)
     
-    data = {
-        "stade": stade_name, 
-        "nombre_supporters": count, 
-        "timestamp": datetime.now()
-    }
+    data = {"stade": stade_name, "nombre_supporters": count, "timestamp": datetime.now()}
     
     try:
         db.collection("affluence").add(data)
-        status = "✅ Succès : Données envoyées à Firebase !"
+        status = "✅ Succès : Enregistré dans Firebase !"
     except Exception as e:
-        status = f"❌ Erreur Database : {str(e)}"
+        status = f"❌ Erreur Firebase : {str(e)}"
                 
-    return {
-        "stade": stade_name, 
-        "nombre_supporters": count, 
-        "message": status
-    }
+    return {"stade": stade_name, "nombre_supporters": count, "message": status}
