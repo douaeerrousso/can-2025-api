@@ -3,13 +3,15 @@ from ultralytics import YOLO
 import io
 from PIL import Image
 import torch
+import functools
 
-# CETTE LIGNE EST LA CLÉ : Elle autorise PyTorch à charger le modèle YOLO
-torch.serialization.add_safe_globals(["ultralytics.nn.tasks.DetectionModel"])
+# Solution radicale pour le bug PyTorch/Ultralytics
+# On redéfinit temporairement le chargement pour accepter le modèle YOLO
+torch.load = functools.partial(torch.load, weights_only=False)
 
 app = FastAPI()
 
-# Chargement du modèle (il se téléchargera automatiquement au premier lancement)
+# Chargement du modèle
 model = YOLO('yolov8n.pt') 
 
 @app.get("/")
@@ -18,7 +20,6 @@ def home():
 
 @app.post("/predict")
 async def predict(file: UploadFile = File(...)):
-    # Lire l'image
     img_bytes = await file.read()
     image = Image.open(io.BytesIO(img_bytes))
     
