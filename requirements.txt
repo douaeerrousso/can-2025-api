@@ -3,3 +3,4 @@ uvicorn
 ultralytics==8.0.0
 python-multipart
 pillow
+firebase-admin
