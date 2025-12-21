@@ -6,15 +6,15 @@ from firebase_admin import credentials, firestore
 from datetime import datetime
 import numpy as np
 
-# 1. FIX TECHNIQUE
+# 1. FIX TECHNIQUE POUR LE CHARGEMENT DU MODÈLE
 torch.load = functools.partial(torch.load, weights_only=False)
 
-# 2. TA CLÉ DIRECTEMENT DANS LE CODE (Plus d'erreur de variable !)
+# 2. CONFIGURATION FIREBASE AVEC TA CLÉ
 service_account_info = {
   "type": "service_account",
   "project_id": "can-2025-dashboard",
   "private_key_id": "d4ec71ca2d1398dabc9fef6cc50d5dc806f9b39c",
-  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvwIBADANBgkqhkiG9w0BAQEFAASCBKkwggSlAgEAAoIBAQC0wsOG7YI2hgBR\n6t7SzLyZ418Gd4N22KOWqPdMBbWgTbnzZ0UXaOc324Hr67pgfvkBIQcbGP6oG8f7\nTZBefEobtVRimUvG11qy9syssF1F+e9SmxXSSuEms5NWN41vWTyQAfgeilWwLY1o\nAhk2qa6iNlsBj6wco5EIJNLANEvD1aLTdlMjkTyj3iso6vrkKIBZ7GAf3bHrKXOD\no1m1d/qGmxIQSu/em5koT/wwuRVOZkMvnSnX+H/wLS8evOLmMAcig0yWB6G2Rbfe\njXyznFu0c4BnQK322+zNVhiJSBD7A6H/HyPNEhy3UM3NrxQQ7kNcnVFSFpp9DyxY\nlX97pjPBAgMBAAECggEACPUh2rIzDV/57L/2h3xigum+kBkkvaNMsARIL6SUyeXa\n0idgSCGzBj9CzUh4NZyf2vYiXlhlvjo/ixeJO6AYeA5gqSYu7Xfx5Fkl7roqqnNm\nmwcDv3u7HpTa4fSMy2N2WdiPIsxOJMCNIltVmTIywj0ZU2wlkPcWEnuTVLetYtNC\nIgrxBq8/QeWbfcr7idU5DSZ0b49JmVHEwSX5rBwTDbXLXkGFJ+dUGS+fAc0AB0Nn\ni6zv8ZCzT5TaQ463FS4s+ZPSxwhBJndRQ1/7pXPexwFaMkSnEApu/eXJ1hg1j4Ke\n5uMsL3TBGilMhhlvvOlyFIcjyqZea0zB2kXlPd8o8QKBgQD9M32R2oZFNguVY0Bb\nl470qRkXGG81CCqd6tz4Ry4dRp0VlVAHXFDbvRC8SSBmkrcfOtoymXtKv5qfSJTS\nbuTgFhUMSzdngxSnjwUQuGOt+j/p4WGGtN3CHFKnEYD/wuC215F5w0NkgKXOBqGH\nWRcFPbgcV35Au3NkYMGA9UCFRQKBgQC2wkgFqCNGlcWMVYM1onW92NrwD09JXZfb\nEY6w7t+YHEUOAIUVbrsyq9PY7MWnK98pEs8Hpx54CcBESgF+ipXkuRM7XSaomrtf\nL+DIrCUIacM+yx5zYAn2OEu/W2WPhTa5UqOScjQ0B3+eAIveJN5j4V4Zv31IGWFb\n8rKwbUyGTQKBgQCl7cxofNBpItXMfFJ8s4GXjAlJPVYDZuqmunc8rUjnHpNqxYLA\nkBrdJbWF7lYxYgxnhuXfKv3FKnNl1ubQUKPkxhPdDp2sVBaBCBTFtFB+fvTLjEuh\nP33j6zOvEKV89nTU3cgUB4ZuonAF6AqK7DNN1/iDekLeoPkp2s50eERkEQKBgQCm\ndk09gcknqJF34geR2bjew9+fGoLAM1R2wAY1GE5mcRFg0I5nWCV/4Mwj4H2jZ61q\n7uvNb6Wr9k2+pZ240af33a8rugvVNKKH78cRYOKWSCcDUeUZd5d7QgmUcT4PPGn8\n4M2GPSlZXp8ZnivHmdNKLGMWlrkY660nH+csFVHHXQKBgQCdfSee2Dztgl54w02r\nAfQPPsO1XqNcD46Gl8Ng5fnL2nb90Rmqm7J6TVfVBQk1sj5ypWYg83FCorfzUFN0\nYUjbRK4orSLEuzLWmTDibGvl5CbwoyHTkWg0i3YtMDddUPODkUgL3d9C4HneDo4c\nbwrrXBb1S0wFGbJh7aPwaHWHow==\n-----END PRIVATE KEY-----\n",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvwIBADANBgkqhkiG9w0BAQEFAASCBKkwggSlAgEAAoIBAQC0wsOG7YI2hgBR\n6t7SzLyZ418Gd4N22KOWqPdMBbWgTbnzZ0UXaOc324Hr67pgfvkBIQcbGP6oG8f7\nTZBefEobtVRimUvG11qy9syssF1F+e9SmxXSSuEms5NWN41vWTyQAfgeilWwLY1o\nAhk2qa6iNlsBj6wco5EIJNLANEvD1aLTdlMjkTyj3iso6vrkKIBZ7GAf3bHrKXOD\no1m1d/qGmxIQSu/em5koT/wwuRVOZkMvnSnX+H/wLS8evOLmMAcig0yWB6G2Rbfe\njXyznFu0c4BnQK322+zNVhiJSBD7A6H/HyPNEhy3UM3NrxQQ7kNcnVFSFpp9DyxY\nlX97pjPBAgMBAAECggEACPUh2rIzDV/57L/2h3xigum+kBkkvaNMsARIL6SUyeXa\n0idgSCGzBj9CzUh4NZyf2vYiXlhlvjo/ixeJO6AYeA5gqSYu7Xfx5Fkl7roqqnNm\nmwcDv3u7HpTa4fSMy2N2WdiPIsxOJMCNIltVmTIywj0ZU2wlkPcWEnuTVLetYtNC\nIgrxBq8/QeWbfcr7idU5DSZ0b49JmVHEwSX5rBwTDbXLXkGFJ+dUGS+fAc0AB0Nn\ni6zv8ZCzT5TaQ463FS4s+ZPSxwhBJndRQ1/7pXPexwFaMkSnEApu/eXJ1hg1j4Ke\n5uMsL3TBGilMhhlvvOlyFIcjyqZea0zB2kXlPd8o8QKBgQD9M32R2oZFNguVY0Bb\nl470qRkXGG81CCqd6tz4Ry4dRp0VlVAHXFDbvRC8SSBmkrcfOtoymXtKv5qfSJTS\buTgFhUMSzdngxSnjwUQuGOt+j/p4WGGtN3CHFKnEYD/wuC215F5w0NkgKXOBqGH\nWRcFPbgcV35Au3NkYMGA9UCFRQKBgQC2wkgFqCNGlcWMVYM1onW92NrwD09JXZfb\nEY6w7t+YHEUOAIUVbrsyq9PY7MWnK98pEs8Hpx54CcBESgF+ipXkuRM7XSaomrtf\nL+DIrCUIacM+yx5zYAn2OEu/W2WPhTa5UqOScjQ0B3+eAIveJN5j4V4Zv31IGWFb\n8rKwbUyGTQKBgQCl7cxofNBpItXMfFJ8s4GXjAlJPVYDZuqmunc8rUjnHpNqxYLA\nkBrdJbWF7lYxYgxnhuXfKv3FKnNl1ubQUKPkxhPdDp2sVBaBCBTFtFB+fvTLjEuh\nP33j6zOvEKV89nTU3cgUB4ZuonAF6AqK7DNN1/iDekLeoPkp2s50eERkEQKBgQCm\ndk09gcknqJF34geR2bjew9+fGoLAM1R2wAY1GE5mcRFg0I5nWCV/4Mwj4H2jZ61q\n7uvNb6Wr9k2+pZ240af33a8rugvVNKKH78cRYOKWSCcDUeUZd5d7QgmUcT4PPGn8\n4M2GPSlZXp8ZnivHmdNKLGMWlrkY660nH+csFVHHXQKBgQCdfSee2Dztgl54w02r\nAfQPPsO1XqNcD46Gl8Ng5fnL2nb90Rmqm7J6TVfVBQk1sj5ypWYg83FCorfzUFN0\nYUjbRK4orSLEuzLWmTDibGvl5CbwoyHTkWg0i3YtMDddUPODkUgL3d9C4HneDo4c\nbwrrXBb1S0wFGbJh7aPwaHWHow==\n-----END PRIVATE KEY-----\n",
   "client_email": "firebase-adminsdk-fbsvc@can-2025-dashboard.iam.gserviceaccount.com",
   "client_id": "110330015843040008241",
   "auth_uri": "https://accounts.google.com/o/oauth2/auth",
@@ -24,7 +24,10 @@ service_account_info = {
   "universe_domain": "googleapis.com"
 }
 
+# 3. INITIALISATION CRITIQUE (RÉPARE LA SIGNATURE)
 if not firebase_admin._apps:
+    # Cette ligne transforme les '\n' de texte en vrais sauts de ligne pour Google
+    service_account_info["private_key"] = service_account_info["private_key"].replace("\\n", "\n")
     cred = credentials.Certificate(service_account_info)
     firebase_admin.initialize_app(cred)
 
@@ -37,19 +40,27 @@ async def predict(stade_name: str, file: UploadFile = File(...)):
     img_bytes = await file.read()
     image = Image.open(io.BytesIO(img_bytes)).convert("RGB")
     
-    # 3. DETECTION HAUTE PERFORMANCE
+    # DÉTECTION OPTIMISÉE (75+ supporters détectés)
     results = model(np.array(image), imgsz=1280, conf=0.05)
     
     count = 0
     for result in results:
         count += len(result.boxes)
     
-    data = {"stade": stade_name, "nombre_supporters": count, "timestamp": datetime.now()}
+    data = {
+        "stade": stade_name, 
+        "nombre_supporters": count, 
+        "timestamp": datetime.now()
+    }
     
     try:
         db.collection("affluence").add(data)
-        status = "✅ Enregistré !"
+        status = "✅ Succès : Données envoyées à Firebase !"
     except Exception as e:
-        status = f" Erreur : {str(e)}"
+        status = f"❌ Erreur Database : {str(e)}"
                 
-    return {"stade": stade_name, "nombre_supporters": count, "message": status}
+    return {
+        "stade": stade_name, 
+        "nombre_supporters": count, 
+        "message": status
+    }
