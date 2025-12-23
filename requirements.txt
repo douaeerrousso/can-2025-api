@@ -4,4 +4,7 @@ ultralytics>=8.0.100
 python-multipart
 pillow
 numpy
+streamlit
+pandas
 supabase
+plotly
