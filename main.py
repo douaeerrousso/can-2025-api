@@ -7,7 +7,6 @@ import io, torch, functools
 from PIL import Image
 import numpy as np
 import uvicorn
-import traceback
 
 # Fix technique pour charger le modèle YOLO sur Railway
 torch.load = functools.partial(torch.load, weights_only=False)
@@ -29,12 +28,12 @@ app.add_middleware(
 )
 
 # Charger le modèle YOLOv8
-print("Chargement du modèle YOLOv8...")
+print(" Chargement du modèle YOLOv8...")
 try:
     model = YOLO('yolov8n.pt')
-    print("✅ Modèle YOLOv8 chargé avec succès")
+    print(" Modèle YOLOv8 chargé avec succès")
 except Exception as e:
-    print(f"❌ Erreur lors du chargement du modèle: {e}")
+    print(f" Erreur lors du chargement du modèle: {e}")
     model = None
 
 @app.get("/")
@@ -56,19 +55,20 @@ async def predict(stade_name: str = Form(...), file: UploadFile = File(...)):
         # Vérifier que c'est une image valide
         try:
             image = Image.open(io.BytesIO(img_bytes)).convert("RGB")
-            print(f"✅ Image chargée: {image.size}")
+            print(f" Image chargée: {image.size}")
         except Exception as e:
-            print(f"❌ Erreur lors du chargement de l'image: {e}")
+            print(f" Erreur lors du chargement de l'image: {e}")
             return {"error": f"Image invalide: {str(e)}", "stade": stade_name}, 400
         
         # Détection avec YOLOv8
-        print("🔍 Analyse YOLOv8 en cours...")
+        print(" Analyse YOLOv8 en cours...")
         try:
             results = model(np.array(image), imgsz=1280, conf=0.05)
             count = sum(len(r.boxes) for r in results)
-            print(f"✅ Détection complète: {count} supporters détectés")
+            print(f" Détection complète: {count} supporters détectés")
         except Exception as e:
-            print(f"❌ Erreur lors de la détection: {e}")
+            print(f" Erreur lors de la détection: {e}")
+            import traceback
             traceback.print_exc()
             return {"error": f"Erreur YOLOv8: {str(e)}", "stade": stade_name}, 500
         
@@ -80,12 +80,12 @@ async def predict(stade_name: str = Form(...), file: UploadFile = File(...)):
         
         db_status = "Succès Supabase"
         try:
-            print(f"📤 Envoi à Supabase: {data}")
+            print(f" Envoi à Supabase: {data}")
             supabase.table("affluence").insert(data).execute()
-            print("✅ Données insérées dans Supabase")
+            print(" Données insérées dans Supabase")
         except Exception as e:
             db_status = f"Erreur Supabase: {str(e)}"
-            print(f"⚠️ {db_status}")
+            print(f" {db_status}")
         
         return {
             "stade": stade_name, 
@@ -94,7 +94,8 @@ async def predict(stade_name: str = Form(...), file: UploadFile = File(...)):
         }
     
     except Exception as e:
-        print(f"❌ ERREUR GÉNÉRALE: {e}")
+        print(f" ERREUR GÉNÉRALE: {e}")
+        import traceback
         traceback.print_exc()
         return {
             "error": str(e),
@@ -102,9 +103,8 @@ async def predict(stade_name: str = Form(...), file: UploadFile = File(...)):
             "database": "Erreur lors du traitement"
         }, 500
 
-# ✅ Point d'entrée pour Railway
+# ✅ LANCER LE SERVEUR DIRECTEMENT (sans if __name__)
+# Railway va exécuter ce code au démarrage
 port = int(os.getenv("PORT", 8000))
 print(f"🚀 Démarrage du serveur sur le port {port}")
-
-if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=port, reload=False)
+uvicorn.run(app, host="0.0.0.0", port=port, reload=False)
