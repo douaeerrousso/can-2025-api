@@ -19,7 +19,7 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 app = FastAPI()
 
-# ✅ MIDDLEWARE CORS (Indispensable pour React/Streamlit)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -29,12 +29,12 @@ app.add_middleware(
 )
 
 # Charger le modèle YOLOv8
-print("🚀 Chargement du modèle YOLOv8...")
+print(" Chargement du modèle YOLOv8...")
 try:
     model = YOLO('yolov8n.pt')
-    print("✅ Modèle YOLOv8 chargé avec succès")
+    print(" Modèle YOLOv8 chargé avec succès")
 except Exception as e:
-    print(f"❌ Erreur chargement modèle: {e}")
+    print(f" Erreur chargement modèle: {e}")
     model = None
 
 @app.get("/")
@@ -72,9 +72,9 @@ async def predict(stade_name: str = Form(...), file: UploadFile = File(...)):
     except Exception as e:
         return {"error": str(e)}, 500
 
-# ✅ LANCEMENT DU SERVEUR (Correctif Railway)
+# LANCEMENT DU SERVEUR (Correctif Railway)
 if __name__ == "__main__":
     # Railway injecte automatiquement le port nécessaire via la variable PORT
     port = int(os.getenv("PORT", 8000))
-    print(f"🔥 Serveur en cours d'exécution sur le port {port}")
+    print(f" Serveur en cours d'exécution sur le port {port}")
     uvicorn.run(app, host="0.0.0.0", port=port)
