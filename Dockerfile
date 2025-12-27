@@ -18,6 +18,5 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-# ✅ SOLUTION : Lancer Python directement (pas besoin de sh -c)
-# Python gérera le PORT lui-même dans main.py
+
 CMD ["python", "main.py"]
